@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>칭찬 감옥</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Orbitron:wght@700;900&display=swap');
+
+    :root {
+      --neon-cyan: #00f5ff;
+      --neon-magenta: #ff00ff;
+      --neon-purple: #bf00ff;
+      --neon-green: #39ff14;
+      --neon-yellow: #fff700;
+      --bg-dark: #05050f;
+      --bg-card: #0d0d1f;
+      --text-main: #e8e8ff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #fireworks-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* ── 로딩 오버레이 ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 5, 15, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    .loading-overlay.visible { display: flex; }
+
+    .loading-ring {
+      width: 72px;
+      height: 72px;
+      border: 3px solid rgba(0, 245, 255, 0.1);
+      border-top-color: var(--neon-cyan);
+      border-right-color: var(--neon-magenta);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9rem;
+      color: var(--neon-cyan);
+      letter-spacing: 2px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* ── 레이아웃 ── */
+    .container {
+      position: relative;
+      z-index: 20;
+      width: 100%;
+      max-width: 760px;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.5));
+      line-height: 1.3;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: rgba(232, 232, 255, 0.5);
+      text-align: center;
+      letter-spacing: 1px;
+      margin-top: -24px;
+    }
+
+    /* ── 카드 (입력 / 결과 공유) ── */
+    .main-card {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow:
+        0 0 30px rgba(0, 245, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── 입력 뷰 ── */
+    .input-view {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .input-view.hidden { display: none; }
+
+    .input-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 245, 255, 0.25);
+      border-radius: 12px;
+      padding: 16px 18px;
+      color: var(--text-main);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 1rem;
+      resize: none;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      min-height: 110px;
+      line-height: 1.7;
+    }
+
+    textarea::placeholder { color: rgba(232, 232, 255, 0.25); }
+
+    textarea:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 20px rgba(0, 245, 255, 0.15), inset 0 0 10px rgba(0, 245, 255, 0.05);
+    }
+
+    .char-count {
+      text-align: right;
+      font-size: 0.75rem;
+      color: rgba(232, 232, 255, 0.3);
+      margin-top: 6px;
+    }
+
+    /* ── 버튼 공통 ── */
+    .btn {
+      position: relative;
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+      transform: translateX(-100%);
+    }
+    .btn:hover:not(:disabled)::before { animation: shimmer 0.6s ease forwards; }
+
+    @keyframes shimmer { to { transform: translateX(100%); } }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00c8ff, #7b00ff, #ff00c8);
+      background-size: 200% 200%;
+      animation: gradientShift 4s ease infinite;
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 8px 30px rgba(0, 200, 255, 0.4), 0 0 60px rgba(123, 0, 255, 0.2);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(0, 245, 255, 0.4);
+      color: var(--neon-cyan);
+      font-size: 0.9rem;
+      padding: 14px;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(0, 245, 255, 0.05);
+      box-shadow: 0 0 20px rgba(0, 245, 255, 0.15);
+      border-color: var(--neon-cyan);
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* ── 결과 뷰 ── */
+    .result-view {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .result-view.visible {
+      display: flex;
+      animation: cardReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* 결과 카드 내부 회전 배경 */
+    .main-card.result-mode {
+      border-color: rgba(191, 0, 255, 0.4);
+      box-shadow:
+        0 0 40px rgba(191, 0, 255, 0.15),
+        0 0 80px rgba(0, 245, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .main-card.result-mode::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(
+        transparent,
+        rgba(0, 245, 255, 0.03),
+        transparent,
+        rgba(191, 0, 255, 0.03),
+        transparent
+      );
+      animation: rotate 8s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    @keyframes cardReveal {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .praise-badge {
+      position: relative;
+      display: inline-block;
+      font-size: 0.7rem;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--neon-yellow);
+      padding: 6px 14px;
+      border: 1px solid rgba(255, 247, 0, 0.4);
+      border-radius: 999px;
+      background: rgba(255, 247, 0, 0.05);
+    }
+
+    .praise-text {
+      position: relative;
+      font-size: 1.05rem;
+      line-height: 1.9;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+
+    /* ── 에러 메시지 ── */
+    .error-msg {
+      display: none;
+      padding: 14px 18px;
+      background: rgba(255, 50, 50, 0.08);
+      border: 1px solid rgba(255, 80, 80, 0.3);
+      border-radius: 12px;
+      color: #ff6b6b;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .error-msg.visible {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 데코 ── */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent, transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .corner-deco { position: fixed; width: 80px; height: 80px; opacity: 0.2; }
+    .corner-deco.tl { top: 20px; left: 20px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
+    .corner-deco.tr { top: 20px; right: 20px; border-top: 2px solid var(--neon-magenta); border-right: 2px solid var(--neon-magenta); }
+    .corner-deco.bl { bottom: 20px; left: 20px; border-bottom: 2px solid var(--neon-purple); border-left: 2px solid var(--neon-purple); }
+    .corner-deco.br { bottom: 20px; right: 20px; border-bottom: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); }
+
+    @media (max-width: 480px) {
+      .main-card { padding: 24px 20px; }
+      .container { padding: 30px 16px; gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fireworks-canvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="corner-deco tl"></div>
+  <div class="corner-deco tr"></div>
+  <div class="corner-deco bl"></div>
+  <div class="corner-deco br"></div>
+
+  <!-- 로딩 오버레이 -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-ring"></div>
+    <div class="loading-text">온 우주의 힘을 모으는 중</div>
+  </div>
+
+  <div class="container">
+    <div>
+      <h1 class="title">칭찬 감옥</h1>
+    </div>
+
+    <div class="main-card" id="main-card">
+      <!-- 입력 뷰 -->
+      <div class="input-view" id="input-view">
+        <label class="input-label" for="achievement-input">⚡ 오늘 내가 한 일</label>
+        <div>
+          <textarea
+            id="achievement-input"
+            placeholder="오늘 한 일을 적어보세요&#10;(예: 밥을 먹었다, 버스를 탔다, 숨을 쉬었다...)"
+            maxlength="500"
+          ></textarea>
+          <div class="char-count"><span id="char-count">0</span> / 500</div>
+        </div>
+        <div class="error-msg" id="error-msg"></div>
+        <button class="btn btn-primary" id="praise-btn" onclick="getPraise()">
+          🚀 우주적 칭찬 받기
+        </button>
+      </div>
+
+      <!-- 결과 뷰 -->
+      <div class="result-view" id="result-view">
+        <div class="praise-badge">✨ 인류 최고의 업적 인증서 ✨</div>
+        <div class="praise-text" id="praise-text"></div>
+        <button class="btn btn-secondary" onclick="resetToInput()">
+          ✦ 새 칭찬 받기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const textarea = document.getElementById('achievement-input');
+    const charCount = document.getElementById('char-count');
+
+    textarea.addEventListener('input', () => {
+      charCount.textContent = textarea.value.length;
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) getPraise();
+    });
+
+    async function getPraise() {
+      const achievement = textarea.value.trim();
+      if (!achievement) {
+        showError('오늘 한 일을 입력해주세요! 숨을 쉰 것도 대단한 업적입니다 🌟');
+        return;
+      }
+
+      hideError();
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/praise', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ achievement }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showResult(data.praise);
+        launchFireworks();
+      } catch {
+        showError('우주의 기운을 받지 못했습니다. 다시 시도해주세요');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function setLoading(on) {
+      document.getElementById('loading-overlay').classList.toggle('visible', on);
+      document.getElementById('praise-btn').disabled = on;
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('error-msg').classList.remove('visible');
+    }
+
+    function showResult(text) {
+      document.getElementById('praise-text').textContent = text;
+      document.getElementById('input-view').classList.add('hidden');
+      const resultView = document.getElementById('result-view');
+      resultView.classList.add('visible');
+      document.getElementById('main-card').classList.add('result-mode');
+    }
+
+    function resetToInput() {
+      document.getElementById('result-view').classList.remove('visible');
+      document.getElementById('input-view').classList.remove('hidden');
+      document.getElementById('main-card').classList.remove('result-mode');
+      textarea.value = '';
+      charCount.textContent = '0';
+      hideError();
+    }
+
+    // ── 캔버스 설정 ────────────────────────────────────────
+    const canvas = document.getElementById('fireworks-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const NEON = [
+      '#00f5ff','#ff00ff','#bf00ff','#39ff14',
+      '#fff700','#ff6600','#ff0055','#00ffaa','#ff88ff','#88ffff',
+    ];
+    const rndColor = () => NEON[Math.floor(Math.random() * NEON.length)];
+
+    let animFrame = null;
+    let items = [];
+    let activeEnd = 0;
+    let activeMode = false;
+
+    function stopAnim() {
+      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      items = [];
+    }
+
+    // ── 공통 진입점 ────────────────────────────────────────
+    function launchFireworks() {
+      stopAnim();
+      const type = Math.floor(Math.random() * 4); // 0~3
+      activeEnd = Date.now() + 5000;
+      activeMode = true;
+      switch (type) {
+        case 0: startFireworks(); break;
+        case 1: startConfetti(); break;
+        case 2: startLightning(); break;
+        case 3: startBubbles(); break;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 1. 불꽃놀이 (Fireworks)
+    // ══════════════════════════════════════════════════════
+    class FWParticle {
+      constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6;
+        this.vx = Math.cos(a) * s; this.vy = Math.sin(a) * s;
+        this.life = 1; this.decay = 0.012 + Math.random() * 0.018;
+        this.r = 2 + Math.random() * 3; this.trail = [];
+      }
+      update() {
+        this.trail.push({x:this.x,y:this.y});
+        if (this.trail.length > 6) this.trail.shift();
+        this.vy += 0.08; this.vx *= 0.98;
+        this.x += this.vx; this.y += this.vy; this.life -= this.decay;
+      }
+      draw() {
+        this.trail.forEach((t,i) => {
+          const a = (i/this.trail.length)*this.life*0.5;
+          ctx.beginPath(); ctx.arc(t.x,t.y,this.r*0.5,0,Math.PI*2);
+          ctx.fillStyle = this.color+Math.floor(a*255).toString(16).padStart(2,'0');
+          ctx.fill();
+        });
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+        ctx.fillStyle = this.color; ctx.globalAlpha = this.life;
+        ctx.shadowBlur = 12; ctx.shadowColor = this.color; ctx.fill();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      }
+      dead() { return this.life <= 0; }
+    }
+    class Rocket {
+      constructor() {
+        this.x = Math.random()*canvas.width; this.y = canvas.height;
+        this.ty = canvas.height*(0.1+Math.random()*0.5);
+        this.color = rndColor();
+        const dx=(Math.random()-0.5)*200, dy=this.ty-this.y;
+        const d=Math.sqrt(dx*dx+dy*dy), s=10+Math.random()*8;
+        this.vx=dx/d*s; this.vy=dy/d*s; this.boom=false; this.trail=[];
+      }
+      update() {
+        this.trail.push({x:this.x,y:this.y});
+        if(this.trail.length>10) this.trail.shift();
+        this.x+=this.vx; this.y+=this.vy; this.vy+=0.2;
+        if(this.vy>=0||this.y<=this.ty) this.boom=true;
+      }
+      draw() {
+        this.trail.forEach((t,i)=>{
+          ctx.beginPath(); ctx.arc(t.x,t.y,2,0,Math.PI*2);
+          ctx.fillStyle=this.color; ctx.globalAlpha=(i/this.trail.length)*0.7; ctx.fill();
+        });
+        ctx.globalAlpha=1;
+        ctx.beginPath(); ctx.arc(this.x,this.y,3,0,Math.PI*2);
+        ctx.fillStyle='#fff'; ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.fill(); ctx.shadowBlur=0;
+      }
+      explode() {
+        const ps=[];
+        for(let i=0;i<120;i++) ps.push(new FWParticle(this.x,this.y,this.color));
+        for(let i=0;i<20;i++){const p=new FWParticle(this.x,this.y,'#fff');p.decay=0.08;p.r=1;ps.push(p);}
+        const c2=rndColor();
+        for(let i=0;i<40;i++) ps.push(new FWParticle(this.x,this.y,c2));
+        return ps;
+      }
+    }
+    function startFireworks() {
+      let rockets=[], particles=[];
+      function loop() {
+        ctx.fillStyle='rgba(5,5,15,0.15)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        const now=Date.now();
+        if(activeMode && now<activeEnd && Math.random()<0.15) rockets.push(new Rocket());
+        else if(now>=activeEnd) activeMode=false;
+        rockets=rockets.filter(r=>{r.update();r.draw();if(r.boom){particles.push(...r.explode());return false;}return true;});
+        particles=particles.filter(p=>{p.update();p.draw();return!p.dead();});
+        if(activeMode||rockets.length||particles.length) animFrame=requestAnimationFrame(loop);
+        else{ctx.clearRect(0,0,canvas.width,canvas.height);animFrame=null;}
+      }
+      animFrame=requestAnimationFrame(loop);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 2. 색종이 (Confetti)
+    // ══════════════════════════════════════════════════════
+    class Confetto {
+      constructor(init=false) { this.reset(init); }
+      reset(init=false) {
+        this.x = Math.random()*canvas.width;
+        this.y = init ? Math.random()*canvas.height : -20;
+        this.w = 6+Math.random()*10; this.h = 4+Math.random()*6;
+        this.color = rndColor();
+        this.vx = (Math.random()-0.5)*3; this.vy = 2+Math.random()*4;
+        this.rot = Math.random()*Math.PI*2; this.drot = (Math.random()-0.5)*0.15;
+        this.life = 1; this.decay = 0.004+Math.random()*0.004;
+      }
+      update() { this.x+=this.vx; this.y+=this.vy; this.rot+=this.drot; this.life-=this.decay; }
+      draw() {
+        ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.rot);
+        ctx.globalAlpha=this.life; ctx.fillStyle=this.color;
+        ctx.shadowBlur=8; ctx.shadowColor=this.color;
+        ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+        ctx.restore(); ctx.globalAlpha=1; ctx.shadowBlur=0;
+      }
+      dead() { return this.life<=0||this.y>canvas.height+20; }
+    }
+    function startConfetti() {
+      for(let i=0;i<200;i++) items.push(new Confetto(true));
+      function loop() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        const now=Date.now();
+        if(activeMode && now<activeEnd && items.length<300) items.push(new Confetto());
+        else if(now>=activeEnd) activeMode=false;
+        items=items.filter(c=>{c.update();c.draw();return!c.dead();});
+        if(activeMode||items.length) animFrame=requestAnimationFrame(loop);
+        else{ctx.clearRect(0,0,canvas.width,canvas.height);animFrame=null;}
+      }
+      animFrame=requestAnimationFrame(loop);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 3. 번개 (Lightning)
+    // ══════════════════════════════════════════════════════
+    function buildSegments(x1, y1, x2, y2, depth, segs) {
+      if (depth <= 0 || Math.hypot(x2-x1, y2-y1) < 6) {
+        segs.push([x1, y1, x2, y2]);
+        return;
+      }
+      const mx = (x1+x2)/2 + (Math.random()-0.5)*70;
+      const my = (y1+y2)/2 + (Math.random()-0.5)*40;
+      buildSegments(x1, y1, mx, my, depth-1, segs);
+      buildSegments(mx, my, x2, y2, depth-1, segs);
+      if (Math.random() < 0.35 && depth > 1) {
+        const bx = mx + (Math.random()-0.5)*160;
+        const by = my + 40 + Math.random()*120;
+        buildSegments(mx, my, bx, by, depth-2, segs);
+      }
+    }
+    function startLightning() {
+      let bolts = [], lastStrike = Date.now();
+      function strike() {
+        const color = rndColor();
+        const x1 = canvas.width*0.1 + Math.random()*canvas.width*0.8;
+        const x2 = x1 + (Math.random()-0.5)*180;
+        const y2 = canvas.height*0.35 + Math.random()*canvas.height*0.5;
+        const segs = [];
+        buildSegments(x1, 0, x2, y2, 6, segs);
+        bolts.push({ segs, color, life: 1.3 });
+      }
+      strike();
+      function loop() {
+        ctx.fillStyle = 'rgba(5,5,15,0.2)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const now = Date.now();
+        if (activeMode && now < activeEnd) {
+          if (now - lastStrike > 380) { strike(); lastStrike = now; }
+        } else if (now >= activeEnd) {
+          activeMode = false;
+        }
+        bolts = bolts.filter(b => {
+          const a = Math.min(b.life, 1);
+          ctx.globalAlpha = a;
+          ctx.shadowBlur = 30; ctx.shadowColor = b.color;
+          b.segs.forEach(([x1,y1,x2,y2]) => {
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = b.life > 1 ? 2.5 : 1.2;
+            ctx.stroke();
+          });
+          ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+          b.life -= 0.035;
+          return b.life > 0;
+        });
+        if (activeMode || bolts.length) animFrame = requestAnimationFrame(loop);
+        else { ctx.clearRect(0,0,canvas.width,canvas.height); animFrame = null; }
+      }
+      animFrame = requestAnimationFrame(loop);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 4. 네온 버블 (Bubbles)
+    // ══════════════════════════════════════════════════════
+    class Bubble {
+      constructor() {
+        this.x=Math.random()*canvas.width;
+        this.y=canvas.height+20;
+        this.r=10+Math.random()*40;
+        this.color=rndColor();
+        this.vx=(Math.random()-0.5)*1.5; this.vy=1.5+Math.random()*3;
+        this.life=1; this.decay=0.004+Math.random()*0.006;
+        this.phase=Math.random()*Math.PI*2;
+      }
+      update() {
+        this.phase+=0.04; this.x+=this.vx+Math.sin(this.phase)*0.8;
+        this.y-=this.vy; this.life-=this.decay;
+      }
+      draw() {
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+        ctx.strokeStyle=this.color; ctx.lineWidth=2;
+        ctx.globalAlpha=this.life*0.8;
+        ctx.shadowBlur=20; ctx.shadowColor=this.color; ctx.stroke();
+        // 하이라이트
+        ctx.beginPath(); ctx.arc(this.x-this.r*0.3,this.y-this.r*0.3,this.r*0.2,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fill();
+        ctx.shadowBlur=0; ctx.globalAlpha=1;
+      }
+      dead() { return this.life<=0||this.y<-this.r*2; }
+    }
+    function startBubbles() {
+      for(let i=0;i<30;i++){
+        const b=new Bubble(); b.y=Math.random()*canvas.height; items.push(b);
+      }
+      function loop() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        const now=Date.now();
+        if(activeMode && now<activeEnd && items.length<80) items.push(new Bubble());
+        else if(now>=activeEnd) activeMode=false;
+        items=items.filter(b=>{b.update();b.draw();return!b.dead();});
+        if(activeMode||items.length) animFrame=requestAnimationFrame(loop);
+        else{ctx.clearRect(0,0,canvas.width,canvas.height);animFrame=null;}
+      }
+      animFrame=requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
