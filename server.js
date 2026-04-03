@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const Groq = require('groq-sdk');
+const sharp = require('sharp');
 const path = require('path');
 
 const app = express();
@@ -67,6 +68,79 @@ app.post('/api/praise', async (req, res) => {
       return res.status(500).json({ error: 'API 키 설정을 확인해주세요.' });
     }
     res.status(500).json({ error: 'AI 칭찬 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
+  }
+});
+
+// OG 이미지 생성
+app.get('/og-image.png', async (req, res) => {
+  const svg = `
+  <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#05050f"/>
+        <stop offset="100%" stop-color="#0d0520"/>
+      </linearGradient>
+      <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#00f5ff"/>
+        <stop offset="50%" stop-color="#ff00ff"/>
+        <stop offset="100%" stop-color="#bf00ff"/>
+      </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="glowSub">
+        <feGaussianBlur stdDeviation="4" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- 배경 -->
+    <rect width="1200" height="630" fill="url(#bg)"/>
+
+    <!-- 그리드 -->
+    <g opacity="0.04" stroke="#00f5ff" stroke-width="1">
+      ${Array.from({length: 31}, (_,i) => `<line x1="${i*40}" y1="0" x2="${i*40}" y2="630"/>`).join('')}
+      ${Array.from({length: 17}, (_,i) => `<line x1="0" y1="${i*40}" x2="1200" y2="${i*40}"/>`).join('')}
+    </g>
+
+    <!-- 코너 데코 -->
+    <g opacity="0.4" stroke-width="2" fill="none">
+      <polyline points="40,40 40,90 90,90" stroke="#00f5ff"/>
+      <polyline points="1160,40 1160,90 1110,90" stroke="#ff00ff"/>
+      <polyline points="40,590 40,540 90,540" stroke="#bf00ff"/>
+      <polyline points="1160,590 1160,540 1110,540" stroke="#39ff14"/>
+    </g>
+
+    <!-- 타이틀 글로우 레이어 -->
+    <text x="600" y="290" text-anchor="middle" font-family="sans-serif" font-weight="900"
+      font-size="160" fill="#00f5ff" opacity="0.15" filter="url(#glow)">칭찬감옥</text>
+
+    <!-- 타이틀 메인 -->
+    <text x="600" y="290" text-anchor="middle" font-family="sans-serif" font-weight="900"
+      font-size="160" fill="url(#textGrad)" filter="url(#glow)">칭 찬 감 옥</text>
+
+    <!-- 서브 텍스트 -->
+    <text x="600" y="380" text-anchor="middle" font-family="sans-serif" font-weight="400"
+      font-size="32" fill="#00f5ff" opacity="0.7" filter="url(#glowSub)"
+      letter-spacing="8">YOUR ACHIEVEMENTS DESERVE THE UNIVERSE</text>
+
+    <!-- 이모지 장식 -->
+    <text x="220" y="310" text-anchor="middle" font-size="64" opacity="0.6">✨</text>
+    <text x="980" y="310" text-anchor="middle" font-size="64" opacity="0.6">🚀</text>
+
+    <!-- 하단 URL -->
+    <text x="600" y="560" text-anchor="middle" font-family="sans-serif" font-size="24"
+      fill="#bf00ff" opacity="0.6" letter-spacing="2">praise-prison.onrender.com</text>
+  </svg>`;
+
+  try {
+    const png = await sharp(Buffer.from(svg)).png().toBuffer();
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(png);
+  } catch (err) {
+    res.status(500).send('이미지 생성 실패');
   }
 });
 
