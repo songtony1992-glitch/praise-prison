@@ -416,7 +416,10 @@
     });
 
     textarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) getPraise();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        getPraise();
+      }
     });
 
     async function getPraise() {
