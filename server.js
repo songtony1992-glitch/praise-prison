@@ -79,7 +79,7 @@ app.get('/og-image.png', async (req, res) => {
       .png()
       .toBuffer();
     res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(png);
   } catch (err) {
     res.status(500).send('이미지 생성 실패');
