@@ -372,9 +372,116 @@
     .corner-deco.bl { bottom: 20px; left: 20px; border-bottom: 2px solid var(--neon-purple); border-left: 2px solid var(--neon-purple); }
     .corner-deco.br { bottom: 20px; right: 20px; border-bottom: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); }
 
+    /* ── 모드 탭 ── */
+    .mode-tabs {
+      display: flex;
+      gap: 0;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 4px;
+      width: 100%;
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 12px 8px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: rgba(232, 232, 255, 0.4);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 0.5px;
+    }
+
+    .mode-tab:hover:not(.active) {
+      color: rgba(232, 232, 255, 0.7);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mode-tab.active.cosmic {
+      background: linear-gradient(135deg, rgba(0, 200, 255, 0.15), rgba(191, 0, 255, 0.15));
+      color: var(--neon-cyan);
+      box-shadow: 0 0 16px rgba(0, 245, 255, 0.1);
+    }
+
+    .mode-tab.active.friend {
+      background: linear-gradient(135deg, rgba(255, 133, 179, 0.15), rgba(255, 170, 85, 0.15));
+      color: #ffaacc;
+      box-shadow: 0 0 16px rgba(255, 133, 179, 0.1);
+    }
+
+    /* 친구 모드일 때 카드 테두리 색 */
+    .main-card.friend-mode {
+      border-color: rgba(255, 133, 179, 0.25);
+      box-shadow:
+        0 0 30px rgba(255, 133, 179, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .main-card.friend-mode.result-mode {
+      border-color: rgba(255, 133, 179, 0.4);
+      box-shadow:
+        0 0 40px rgba(255, 133, 179, 0.15),
+        0 0 80px rgba(255, 170, 85, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    /* 친구 모드 프라이머리 버튼 */
+    .btn-primary.friend {
+      background: linear-gradient(135deg, #ff85b3, #ff6b6b, #ffaa55);
+      background-size: 200% 200%;
+      animation: gradientShift 4s ease infinite;
+    }
+    .btn-primary.friend:hover:not(:disabled) {
+      box-shadow: 0 8px 30px rgba(255, 133, 179, 0.4), 0 0 60px rgba(255, 100, 100, 0.2);
+    }
+
+    /* 친구 모드 textarea 포커스 */
+    .friend-mode textarea:focus {
+      border-color: #ff85b3;
+      box-shadow: 0 0 20px rgba(255, 133, 179, 0.15), inset 0 0 10px rgba(255, 133, 179, 0.05);
+    }
+
+    /* 친구 모드 input-label 색 */
+    .friend-mode .input-label {
+      color: #ffaacc;
+    }
+
+    /* 친구 모드 praise-badge */
+    .praise-badge.friend {
+      color: #ffaacc;
+      border-color: rgba(255, 133, 179, 0.4);
+      background: rgba(255, 133, 179, 0.05);
+    }
+
+    /* 친구 모드 결과 텍스트 강조 색 */
+    .friend-mode .praise-text strong {
+      color: #ffaacc;
+    }
+    .friend-mode .praise-text em {
+      color: #ffaa55;
+    }
+
+    /* 친구 모드 secondary 버튼 */
+    .friend-mode .btn-secondary {
+      border-color: rgba(255, 133, 179, 0.4);
+      color: #ffaacc;
+    }
+    .friend-mode .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 133, 179, 0.05);
+      box-shadow: 0 0 20px rgba(255, 133, 179, 0.15);
+      border-color: #ffaacc;
+    }
+
     @media (max-width: 480px) {
       .main-card { padding: 24px 20px; }
       .container { padding: 30px 16px; gap: 24px; }
+      .mode-tab { font-size: 0.8rem; padding: 10px 6px; }
     }
   </style>
 </head>
@@ -389,7 +496,7 @@
   <!-- 로딩 오버레이 -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="loading-ring"></div>
-    <div class="loading-text">온 우주의 힘을 모으는 중</div>
+    <div class="loading-text" id="loading-text">온 우주의 힘을 모으는 중</div>
   </div>
 
   <div class="container">
@@ -397,10 +504,20 @@
       <h1 class="title">칭찬 감옥</h1>
     </div>
 
+    <!-- 모드 탭 -->
+    <div class="mode-tabs" id="mode-tabs">
+      <button class="mode-tab cosmic active" id="tab-cosmic" onclick="switchMode('cosmic')">
+        🚀 우주 과장 칭찬
+      </button>
+      <button class="mode-tab friend" id="tab-friend" onclick="switchMode('friend')">
+        🤗 친구 우쭈쭈 칭찬
+      </button>
+    </div>
+
     <div class="main-card" id="main-card">
       <!-- 입력 뷰 -->
       <div class="input-view" id="input-view">
-        <label class="input-label" for="achievement-input">⚡ 오늘 내가 한 일</label>
+        <label class="input-label" id="input-label" for="achievement-input">⚡ 오늘 내가 한 일</label>
         <div>
           <textarea
             id="achievement-input"
@@ -417,7 +534,7 @@
 
       <!-- 결과 뷰 -->
       <div class="result-view" id="result-view">
-        <div class="praise-badge">✨ 인류 최고의 업적 인증서 ✨</div>
+        <div class="praise-badge" id="praise-badge">✨ 인류 최고의 업적 인증서 ✨</div>
         <div class="praise-text" id="praise-text"></div>
         <button class="btn btn-secondary" onclick="resetToInput()">
           ✦ 새 칭찬 받기
@@ -429,6 +546,55 @@
   <script>
     const textarea = document.getElementById('achievement-input');
     const charCount = document.getElementById('char-count');
+    let currentMode = 'cosmic';
+
+    const MODE_CONFIG = {
+      cosmic: {
+        tabClass: 'cosmic',
+        loadingText: '온 우주의 힘을 모으는 중',
+        btnText: '🚀 우주적 칭찬 받기',
+        badge: '✨ 인류 최고의 업적 인증서 ✨',
+        emptyError: '오늘 한 일을 입력해주세요! 숨을 쉰 것도 대단한 업적입니다 🌟',
+        networkError: '우주의 기운을 받지 못했습니다. 다시 시도해주세요',
+        placeholder: '오늘 한 일을 적어보세요\n(예: 밥을 먹었다, 버스를 탔다, 숨을 쉬었다...)',
+      },
+      friend: {
+        tabClass: 'friend',
+        loadingText: '친구가 달려오는 중 🏃',
+        btnText: '🤗 친구 칭찬 받기',
+        badge: '🤗 오늘도 정말 잘했어 ✨',
+        emptyError: '오늘 한 일을 적어봐! 뭐든 괜찮아 😊',
+        networkError: '친구가 잠깐 자리를 비웠어. 다시 시도해줘 💕',
+        placeholder: '오늘 하루 어땠어?\n(예: 밥을 먹었다, 산책했다, 그냥 버텼다...)',
+      },
+    };
+
+    function switchMode(mode) {
+      currentMode = mode;
+      const cfg = MODE_CONFIG[mode];
+
+      // 탭 active 상태
+      document.getElementById('tab-cosmic').classList.toggle('active', mode === 'cosmic');
+      document.getElementById('tab-cosmic').classList.toggle('cosmic', true);
+      document.getElementById('tab-friend').classList.toggle('active', mode === 'friend');
+
+      // 카드 클래스
+      const card = document.getElementById('main-card');
+      card.classList.toggle('friend-mode', mode === 'friend');
+
+      // 버튼 텍스트 & 색상
+      const btn = document.getElementById('praise-btn');
+      btn.textContent = cfg.btnText;
+      btn.classList.toggle('friend', mode === 'friend');
+
+      // placeholder
+      textarea.placeholder = cfg.placeholder;
+
+      // loading text
+      document.getElementById('loading-text').textContent = cfg.loadingText;
+
+      hideError();
+    }
 
     textarea.addEventListener('input', () => {
       charCount.textContent = textarea.value.length;
@@ -443,8 +609,9 @@
 
     async function getPraise() {
       const achievement = textarea.value.trim();
+      const cfg = MODE_CONFIG[currentMode];
       if (!achievement) {
-        showError('오늘 한 일을 입력해주세요! 숨을 쉰 것도 대단한 업적입니다 🌟');
+        showError(cfg.emptyError);
         return;
       }
 
@@ -455,7 +622,7 @@
         const res = await fetch('/api/praise', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ achievement }),
+          body: JSON.stringify({ achievement, mode: currentMode }),
         });
 
         const data = await res.json();
@@ -464,7 +631,7 @@
         showResult(data.praise);
         launchFireworks();
       } catch {
-        showError('우주의 기운을 받지 못했습니다. 다시 시도해주세요');
+        showError(MODE_CONFIG[currentMode].networkError);
       } finally {
         setLoading(false);
       }
@@ -487,16 +654,23 @@
 
     function showResult(text) {
       document.getElementById('praise-text').innerHTML = marked.parse(text);
+      document.getElementById('praise-badge').textContent = MODE_CONFIG[currentMode].badge;
       document.getElementById('input-view').classList.add('hidden');
+      document.getElementById('mode-tabs').style.display = 'none';
       const resultView = document.getElementById('result-view');
+      const badge = document.getElementById('praise-badge');
+      badge.className = 'praise-badge' + (currentMode === 'friend' ? ' friend' : '');
       resultView.classList.add('visible');
-      document.getElementById('main-card').classList.add('result-mode');
+      const card = document.getElementById('main-card');
+      card.classList.add('result-mode');
     }
 
     function resetToInput() {
       document.getElementById('result-view').classList.remove('visible');
       document.getElementById('input-view').classList.remove('hidden');
       document.getElementById('main-card').classList.remove('result-mode');
+      document.getElementById('mode-tabs').style.display = '';
+      // friend-mode 클래스는 유지 (탭 선택 상태 유지)
       textarea.value = '';
       charCount.textContent = '0';
       hideError();

@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/praise', async (req, res) => {
-  const { achievement } = req.body;
+  const { achievement, mode } = req.body;
 
   if (!achievement || typeof achievement !== 'string') {
     return res.status(400).json({ error: '입력값이 올바르지 않습니다.' });
@@ -28,14 +28,22 @@ app.post('/api/praise', async (req, res) => {
     return res.status(400).json({ error: '입력은 500자를 초과할 수 없습니다.' });
   }
 
-  try {
-    const completion = await groq.chat.completions.create({
-      reasoning_effort: 'none',
-      model: 'qwen/qwen3-32b',
-      messages: [
-        {
-          role: 'system',
-          content: `당신은 세상에서 가장 열정적이고 과장된 칭찬 전문가입니다.
+  const isFriendMode = mode === 'friend';
+
+  const systemPrompt = isFriendMode
+    ? `당신은 사용자의 가장 친한 친구입니다.
+오늘 하루를 보낸 친구가 오늘 한 일을 말하면, 따뜻하고 다정하게 칭찬하고 응원해주세요.
+
+규칙:
+- 반드시 한국어(한글)로만 답변
+- 한자, 중국어, 일본어 문자는 절대 사용 금지. 오직 한글, 영문, 숫자, 이모지만 사용할 것
+- 친한 친구에게 말하듯 편안하고 따뜻한 말투로 (반말 사용)
+- "우쭈쭈", "잘했어", "진짜 대단하다", "고생했어", "최고야" 같은 다정한 표현 자연스럽게 사용
+- 상대방의 노력을 진심으로 인정하고 공감해주기
+- 3~5문장으로 따뜻하고 진심 어리게
+- 마지막에 짧은 응원 한마디로 마무리
+- 이모지 적절히 활용 🤗💕✨🌸😊`
+    : `당신은 세상에서 가장 열정적이고 과장된 칭찬 전문가입니다.
 사용자가 오늘 한 일을 말하면, 마치 그것이 인류 역사상 가장 위대한 업적인 것처럼 극도로 과장되고 화려하게 칭찬해야 합니다.
 
 규칙:
@@ -46,7 +54,16 @@ app.post('/api/praise', async (req, res) => {
 - 우주적/신화적 표현 사용 (예: "빅뱅 이후 최고의 사건", "신들도 무릎을 꿇을", "은하계가 진동하는")
 - 이모지 적극 활용 ✨🔥🌟💫⚡🚀
 - 과장이 어이없을 정도로 심하게
-- 마지막에 짧고 강렬한 슬로건으로 마무리`,
+- 마지막에 짧고 강렬한 슬로건으로 마무리`;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      reasoning_effort: 'none',
+      model: 'qwen/qwen3-32b',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
         },
         {
           role: 'user',
