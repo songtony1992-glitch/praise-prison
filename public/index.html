@@ -13,6 +13,7 @@
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://praise-prison.onrender.com/og-image.png" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Orbitron:wght@700;900&display=swap');
 
@@ -317,9 +318,18 @@
       font-size: 1.05rem;
       line-height: 1.9;
       color: var(--text-main);
-      white-space: pre-wrap;
       word-break: keep-all;
     }
+    .praise-text strong {
+      color: var(--neon-cyan);
+      font-weight: 700;
+    }
+    .praise-text em {
+      color: var(--neon-magenta);
+      font-style: italic;
+    }
+    .praise-text p { margin-bottom: 0.8em; }
+    .praise-text p:last-child { margin-bottom: 0; }
 
     /* ── 에러 메시지 ── */
     .error-msg {
@@ -476,7 +486,7 @@
     }
 
     function showResult(text) {
-      document.getElementById('praise-text').textContent = text;
+      document.getElementById('praise-text').innerHTML = marked.parse(text);
       document.getElementById('input-view').classList.add('hidden');
       const resultView = document.getElementById('result-view');
       resultView.classList.add('visible');
